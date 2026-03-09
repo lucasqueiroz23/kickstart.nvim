@@ -482,8 +482,8 @@ require('lazy').setup({
       -- Automatically install LSPs and related tools to stdpath for Neovim
       -- Mason must be loaded before its dependents so we need to set it up here.
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
-      { 'williamboman/mason.nvim', opts = {} },
-      'williamboman/mason-lspconfig.nvim',
+      { 'mason-org/mason.nvim', opts = {} },
+      'mason-org/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -675,7 +675,7 @@ require('lazy').setup({
         -- clangd = {},
         -- gopls = {},
         -- pyright = {},
-        -- rust_analyzer = {},
+        rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -1011,6 +1011,96 @@ require('lazy').setup({
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
   'tpope/vim-fugitive',
+  {
+    'hat0uma/csvview.nvim',
+    ---@module "csvview"
+    ---@type CsvView.Options
+    opts = {
+      parser = { comments = { '#', '//' } },
+      keymaps = {
+        -- Text objects for selecting fields
+        textobject_field_inner = { 'if', mode = { 'o', 'x' } },
+        textobject_field_outer = { 'af', mode = { 'o', 'x' } },
+        -- Excel-like navigation:
+        -- Use <Tab> and <S-Tab> to move horizontally between fields.
+        -- Use <Enter> and <S-Enter> to move vertically between rows and place the cursor at the end of the field.
+        -- Note: In terminals, you may need to enable CSI-u mode to use <S-Tab> and <S-Enter>.
+        jump_next_field_end = { '<Tab>', mode = { 'n', 'v' } },
+        jump_prev_field_end = { '<S-Tab>', mode = { 'n', 'v' } },
+        jump_next_row = { '<Enter>', mode = { 'n', 'v' } },
+        jump_prev_row = { '<S-Enter>', mode = { 'n', 'v' } },
+      },
+    },
+    cmd = { 'CsvViewEnable', 'CsvViewDisable', 'CsvViewToggle' },
+  },
+  {
+    'greggh/claude-code.nvim',
+    dependencies = {
+      'nvim-lua/plenary.nvim', -- Required for git operations
+    },
+    config = function()
+      require('claude-code').setup {
+        window = {
+          split_ratio = 0.5, -- Percentage of screen for the terminal window (height for horizontal, width for vertical splits)
+          position = 'float', -- Position of the window: "botright", "topleft", "vertical", "float", etc.
+          enter_insert = true, -- Whether to enter insert mode when opening Claude Code
+          hide_numbers = false, -- Hide line numbers in the terminal window
+          hide_signcolumn = true, -- Hide the sign column in the terminal window
+
+          -- Floating window configuration (only applies when position = "float")
+          float = {
+            width = '80%', -- Width: number of columns or percentage string
+            height = '80%', -- Height: number of rows or percentage string
+            row = 'center', -- Row position: number, "center", or percentage string
+            col = 'center', -- Column position: number, "center", or percentage string
+            relative = 'editor', -- Relative to: "editor" or "cursor"
+            border = 'rounded', -- Border style: "none", "single", "double", "rounded", "solid", "shadow"
+          },
+        },
+        -- File refresh settings
+        refresh = {
+          enable = true, -- Enable file change detection
+          updatetime = 100, -- updatetime when Claude Code is active (milliseconds)
+          timer_interval = 1000, -- How often to check for file changes (milliseconds)
+          show_notifications = true, -- Show notification when files are reloaded
+        },
+        -- Git project settings
+        git = {
+          use_git_root = true, -- Set CWD to git root when opening Claude Code (if in git project)
+        },
+        -- Shell-specific settings
+        shell = {
+          separator = '&&', -- Command separator used in shell commands
+          pushd_cmd = 'pushd', -- Command to push directory onto stack (e.g., 'pushd' for bash/zsh, 'enter' for nushell)
+          popd_cmd = 'popd', -- Command to pop directory from stack (e.g., 'popd' for bash/zsh, 'exit' for nushell)
+        },
+        -- Command settings
+        command = 'claude', -- Command used to launch Claude Code
+        -- Command variants
+        command_variants = {
+          -- Conversation management
+          continue = '--continue', -- Resume the most recent conversation
+          resume = '--resume', -- Display an interactive conversation picker
+
+          -- Output options
+          verbose = '--verbose', -- Enable verbose logging with full turn-by-turn output
+        },
+        -- Keymaps
+        keymaps = {
+          toggle = {
+            normal = '<C-,>', -- Normal mode keymap for toggling Claude Code, false to disable
+            terminal = '<C-,>', -- Terminal mode keymap for toggling Claude Code, false to disable
+            variants = {
+              continue = '<leader>cC', -- Normal mode keymap for Claude Code with continue flag
+              verbose = '<leader>cV', -- Normal mode keymap for Claude Code with verbose flag
+            },
+          },
+          window_navigation = true, -- Enable window navigation keymaps (<C-h/j/k/l>)
+          scrolling = true, -- Enable scrolling keymaps (<C-f/b>) for page up/down
+        },
+      }
+    end,
+  },
 }, {
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
@@ -1054,3 +1144,14 @@ vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
 -- don't change cursor position
 vim.keymap.set('n', '<C-d>', '<C-d>zz')
 vim.keymap.set('n', '<C-u>', '<C-u>zz')
+
+vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
+  pattern = '*.csv',
+  callback = function()
+    require('csvview').setup()
+    vim.cmd 'echo "loading csv viewer"'
+    vim.cmd 'CsvViewEnable display_mode=border'
+  end,
+})
+
+vim.loader.enable()
